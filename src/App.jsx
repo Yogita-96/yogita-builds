@@ -1200,8 +1200,8 @@ nav.nav--scrolled { background: rgba(6,8,16,0.94); backdrop-filter: blur(16px); 
   .nav-link { padding: 0.75rem 0; font-size: 0.9rem; border-bottom: 1px solid var(--cb); }
 }
 
-.hero { min-height: 100vh; position: relative; z-index: 1; padding: 100px 5% 60px; }
-.hero-grid { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; gap: 4rem; }
+.hero { min-height: 100vh; position: relative; z-index: 1; padding: 100px 4% 80px; display: flex; flex-direction: column; justify-content: center; }
+.hero-grid { max-width: 1100px; width: 100%; margin: 0 auto; display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: center; gap: 4rem; }
 @media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } .hero-right { order: -1; display: flex; justify-content: center; } }
 .status-dot { display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px; background: rgba(57,255,20,0.07); border: 1px solid rgba(57,255,20,0.22); border-radius: 999px; margin-bottom: 18px; font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--green); letter-spacing: 0.08em; opacity: 0; animation: fadeUp 0.7s 0s forwards; }
 .status-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: gpulse 1.5s ease-in-out infinite; }
