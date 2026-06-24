@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import taskquestPreview from './assets/taskquest-preview.png'
 import theBetweenPreview from './assets/the-between-preview.png'
+import yogitaPhoto from './assets/yogita.jpg'
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
@@ -1127,7 +1128,7 @@ function Footer() {
 // ─── ROOT ────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [photo, setPhoto] = useState(null);
+  const [photo, setPhoto] = useState(yogitaPhoto);
   const sectionIds = NAV_LINKS.map(l => l.href.replace("#", ""));
   const activeSection = useScrollSpy(sectionIds);
   useScrollReveal();
