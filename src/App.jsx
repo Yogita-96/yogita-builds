@@ -1207,11 +1207,35 @@ nav.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 60p
 .pfi::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 55%, rgba(15,21,17,0.4) 100%); pointer-events: none; }
 [data-theme="light"] .pfi::after { background: linear-gradient(to bottom, transparent 65%, rgba(30,38,32,0.15) 100%); }
 
+/* Light mode: printed-photo matte treatment */
+[data-theme="light"] .pfi {
+  background: #FAFBF7;
+  border: 1px solid #D8DFD2;
+  padding: 8px 8px 40px;  /* extra bottom padding = polaroid feel */
+  box-shadow: 0 8px 24px rgba(30,38,32,0.08), 0 2px 4px rgba(30,38,32,0.04);
+  aspect-ratio: auto;
+  height: 440px;
+}
+[data-theme="light"] .pfi img {
+  border-radius: 2px;
+  height: 100%;
+  object-fit: cover;
+  filter: contrast(1.02) saturate(0.95);
+}
+[data-theme="light"] .pfi::after {
+  background: none;  /* no gradient overlay on light — photo already reads clean */
+}
+
 .pc { position: absolute; width: 26px; height: 26px; border: 2px solid var(--accent); z-index: 3; }
 .pc.tl { top: -6px; left: -6px; border-right: none; border-bottom: none; }
 .pc.tr { top: -6px; right: -6px; border-left: none; border-bottom: none; }
 .pc.bl { bottom: -6px; left: -6px; border-right: none; border-top: none; }
 .pc.br { bottom: -6px; right: -6px; border-left: none; border-top: none; }
+
+[data-theme="light"] .pc {
+  opacity: 0.75;
+  border-width: 1.5px;
+}
 
 /* CLEAN LOCATION TAG — angled clip like old cyberpunk, ember filled, sits at bottom-left */
 .pbadge {
