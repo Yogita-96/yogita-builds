@@ -978,13 +978,151 @@ function Footer() {
   );
 }
 
-// ─── CASE STUDY STUB PAGE ────────────────────────────────────────────────────
+// ─── CASE STUDY CONTENT ──────────────────────────────────────────────────────
+
+const CASE_STUDIES = {
+  taskquest: {
+    title: "TaskQuest",
+    tagline: "A gamified React task manager. Every to-do is a quest, every completion is XP, every streak is a level.",
+    status: "shipped",
+    statusLabel: "● Shipped",
+    heroPreview: "taskquest",
+    overview: [
+      "TaskQuest turns the flat, joyless to-do list into an RPG progression system. Adding a task is naming a quest. Checking it off earns XP. Enough XP levels you up. Each level unlocks a new player title — Newcomer → Apprentice → Scout → Adventurer → Warrior → Champion → Legend.",
+      "I built it because I wanted to prove I could design a system, not just implement one — the XP math, the level thresholds, the state persistence, the UX around edge cases. All of it decided from first principles, all of it in raw React with no external state library.",
+    ],
+    stack: ["React 19", "Custom Hooks", "localStorage", "CSS Animations", "Vite"],
+    decisions: [
+      {
+        title: "Custom hooks over Redux",
+        body: "TaskQuest's state is small and local — quest list, XP total, current level, player title. Reaching for Redux would have added ceremony without benefit. Instead I built `useQuests` and `usePlayer` — two custom hooks that own their slices, expose actions, and persist to localStorage on change. The result is a codebase where every piece of state has one clear owner and the mental model stays tiny.",
+      },
+      {
+        title: "RPG progression math",
+        body: "Level thresholds scale exponentially — each level requires ~30% more XP than the last, so early progression feels fast (rewards engagement) and later levels feel earned (rewards commitment). Player titles gate at specific levels, not every level, so unlocking one feels like an event. This is the same design pattern real RPGs use for a reason.",
+      },
+      {
+        title: "Persistence as a first-class concern",
+        body: "Quest data, XP, level, and title all live in localStorage under a namespaced key. Every state change writes immediately — no debouncing, no save button. If the tab closes, refreshes, or crashes, the player returns to exactly where they were. This is invisible when it works, catastrophic when it doesn't, so I tested every edge case: empty state on first load, corrupted JSON, quota exceeded, cross-tab consistency.",
+      },
+      {
+        title: "Micro-interactions that reward",
+        body: "Completing a quest triggers a subtle animation, XP number, and progress bar fill. Leveling up drops a confetti banner with the new title. The animations are pure CSS keyframes — no Framer Motion, no library. Every effect is under 400ms because dopamine works on feedback loops, not spectacle.",
+      },
+    ],
+    qaSection: {
+      title: "How QA thinking shaped the build",
+      body: "This is where two years of AAA game QA earn their keep. Before I wrote the first line of code, I listed everything that could break: duplicate quest names, empty task submissions, XP overflow, level-up during page refresh, localStorage disabled by the browser, quota exceeded, corrupted saved state. Each got a defense.",
+      examples: [
+        "Duplicate quests allowed only if the previous instance is completed — otherwise the input rejects with a friendly nudge",
+        "Confirmation dialog before clearing completed quests (destructive action, no undo)",
+        "Sticky header keeps the XP bar and input visible while the list scrolls — validated against a 200-quest edge case",
+        "Level-up banner auto-dismisses after 2.5s but stays clickable so a distracted player doesn't miss the reward",
+        "Enter key adds a quest so power users never have to reach for the mouse",
+      ],
+      close: "None of this is glamorous. All of it is the difference between a demo and a product.",
+    },
+    learned: [
+      "React's mental model rewards small, single-purpose hooks over sprawling context providers. useQuests and usePlayer stayed under 60 lines each.",
+      "Gamification works when the reward loop is tight (< 500ms) and the progression math respects the player's time. Slow feedback kills engagement faster than boring UI.",
+      "Writing about the project on Medium after shipping forced me to articulate decisions I had made intuitively. Half the reason for the case study is that it makes me a better engineer.",
+    ],
+    articles: [
+      { title: "How I Added Gamification to My React Task Manager", url: "https://medium.com/@yogita27496/how-i-added-gamification-to-my-react-task-manager" },
+    ],
+  },
+
+  "the-between": {
+    title: "The Between",
+    tagline: "A turn-based dark fantasy RPG built entirely in React. Original world, original combat, no game engine.",
+    status: "building",
+    statusLabel: "⟳ Building in public",
+    heroPreview: "thebetween",
+    inProgressBanner: "The Between is actively in development. This case study is being written alongside the game — sections marked 'evolving' will grow as new mechanics ship. Follow along on the Instagram build-in-public account or check the repo for the latest.",
+    overview: [
+      "The Between is a turn-based dark fantasy RPG set in a liminal space that collects things mid-state — things lost, half-formed, or forgotten. Two playable characters, three enemy tiers including a boss with hidden intents, a card-draw combat system with stagger mechanics, and a Sekiro-inspired posture system where damage taken becomes damage dealt.",
+      "The point of the project isn't the game — it's proving that React's state model is powerful enough to run something this systemic. No game engine. No physics library. Just useReducer, useState, and a rigorous design of what each state transition means.",
+    ],
+    stack: ["React 19", "useReducer", "Custom Hooks", "CSS3", "Vite", "localStorage"],
+    decisions: [
+      {
+        title: "useReducer for combat, useState for UI",
+        body: "Combat state is a state machine — turn phase, hand, enemy intent, stagger meter, player and enemy HP, posture, cards played. Managing that with useState alone would mean stale closures and race conditions. useReducer collapses every combat action into a single dispatch that returns the next state, atomically. UI state (menu open, animation playing) stays on useState because it doesn't need history.",
+      },
+      {
+        title: "Card system with stagger-window mechanics",
+        body: "Each character has a deck of ~12 cards. Every turn draws 4. Some cards are always playable, some require stamina, some scale damage based on the target's posture. Sable's Exploit deals 14 damage normally, 28 if the enemy is staggered — that's not a hardcoded doubling, it reads live combat state to compute the multiplier. The system is data-driven: adding a new card is one entry in the deck config, not new logic.",
+      },
+      {
+        title: "Enemy intent → execute loop",
+        body: "Every enemy telegraphs their next action at the start of the turn (icon + damage number), then executes it on their turn. Boss phase 2 hides intents until the player has staggered them once — this small change makes the encounter dramatically harder without new mechanics, just information asymmetry. Players stop optimizing and start reading the fight.",
+      },
+      {
+        title: "Run persistence, not mid-combat save",
+        body: "The game saves on map arrival, not mid-turn. Mid-combat save creates too many edge cases (interrupted animations, in-flight card effects, dispatched-but-not-committed state) for a solo dev on a first pass. Deferring it to a future 'Option B' pattern let me ship the current version without a save system that could corrupt runs. QA calls this scoping. Recruiters call it judgment.",
+      },
+    ],
+    qaSection: {
+      title: "The bug story: enemy-turn re-entry",
+      body: "Halfway through building combat I hit a bug that took a full day to unwind. Enemies would occasionally take two turns in a row, or attack after already being killed. The obvious fix — checking HP before the enemy action — didn't work; the bug still fired.",
+      examples: [
+        "The enemy-turn effect had `playerHP` and `enemyHP` in its dependency array (correct — damage should trigger re-render)",
+        "But that meant the effect would re-fire mid-execution when it applied its own damage to the player",
+        "Which triggered the enemy to act again before the player's turn had actually resumed",
+        "Fix: an `enemyTurnProcessing` ref that guarded the effect body against re-entry — the effect can re-fire freely, but the body only runs to completion once per enemy turn",
+      ],
+      close: "Debugging this taught me something I'd only half-understood: useEffect deps trigger the effect, but the effect body is your responsibility to make idempotent. The ref pattern isn't idiomatic React — it's a workaround for a real constraint. Knowing when to reach for it is the difference between fighting the framework and using it.",
+    },
+    learned: [
+      "State machines aren't a library — they're a discipline. useReducer just gives you the shape.",
+      "Game feel is 90% timing. A card animation at 300ms feels responsive; at 600ms it feels sluggish. This applies to any UI, not just games.",
+      "Building without a framework taught me more about React in six months than three years of professional work did. Constraints are a teacher.",
+    ],
+    articles: [],
+    evolving: [
+      "Phase 2 AAA game-feel work (screen shake, floating damage numbers, hit flashes, boss phase transitions) — planned, not started",
+      "A dedicated 'run complete' screen after the Cartographer boss",
+      "True pause/resume mid-combat preserving full state (deferred until the Steam expansion)",
+    ],
+  },
+};
+
+// ─── CASE STUDY PAGE ─────────────────────────────────────────────────────────
 
 function CaseStudy() {
   const [theme, toggleTheme] = useTheme();
   const { slug } = useParams();
   const project = PROJECTS.find(p => p.slug === slug);
-  const title = project ? project.title : "Case Study";
+  const data = CASE_STUDIES[slug];
+
+  useScrollReveal();
+  useEffect(() => { window.scrollTo(0, 0); }, [slug]);
+
+  const previews = { taskquest: taskquestPreview, thebetween: theBetweenPreview };
+  const heroImg = data ? previews[data.heroPreview] : null;
+
+  if (!data) {
+    return (
+      <>
+        <style>{CSS}</style>
+        <div className="grid-bg" aria-hidden="true" />
+        <nav className="nav nav--scrolled">
+          <Link to="/" className="nav-logo">yogita<span className="logo-dot">.builds</span></Link>
+          <ul className="nav-links">
+            <li><Link to="/" className="nav-link">← Back to portfolio</Link></li>
+            <li className="nav-toggle-item"><ThemeToggle theme={theme} toggle={toggleTheme} /></li>
+          </ul>
+        </nav>
+        <main className="cs-wrap">
+          <div className="cs-inner">
+            <h1 className="cs-title">Case study not found</h1>
+            <p className="cs-body">The project you're looking for doesn't exist yet.</p>
+            <Link to="/" className="btn-p">← Back to portfolio</Link>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -998,31 +1136,178 @@ function CaseStudy() {
           <li className="nav-toggle-item"><ThemeToggle theme={theme} toggle={toggleTheme} /></li>
         </ul>
       </nav>
-      <main className="cs-wrap">
-        <div className="cs-inner">
-          <div className="cs-eyebrow">{'// Case Study'}</div>
-          <h1 className="cs-title">{title}</h1>
-          <div className="cs-status">
-            <span className="cs-dot" /> Coming soon
-          </div>
-          <p className="cs-body">
-            A full write-up is in the works — the idea, design decisions, technical challenges, and what I learned building this project.
-            It'll live here so you can read it without a Medium login, and it'll include screenshots, GIFs, and short video clips.
-          </p>
-          <p className="cs-body">
-            In the meantime, you can explore the {project?.live ? "live version" : "repository"}:
-          </p>
-          <div className="cs-links">
-            {project?.live && (
-              <a href={project.live} target="_blank" rel="noopener noreferrer" className="btn-p">Live site ↗</a>
+
+      <main className="cs-page">
+        {/* HERO */}
+        <section className="cs-hero">
+          <div className="cs-hero-inner">
+            <div className="cs-hero-copy">
+              <div className="cs-eyebrow">{'// Case Study'}</div>
+              <h1 className="cs-title">{data.title}</h1>
+              <p className="cs-tagline">{data.tagline}</p>
+              <div className={`cs-status cs-status--${data.status}`}>
+                <span className="cs-dot" /> {data.statusLabel}
+              </div>
+              <div className="cs-links">
+                {project?.live && (
+                  <a href={project.live} target="_blank" rel="noopener noreferrer" className="btn-p">Visit live site ↗</a>
+                )}
+                {project?.github && project.github !== '#' && (
+                  <a href={project.github} target="_blank" rel="noopener noreferrer" className="btn-o">View source ↗</a>
+                )}
+              </div>
+            </div>
+            {heroImg && (
+              <div className="cs-hero-visual">
+                <img src={heroImg} alt={`${data.title} preview`} className="cs-hero-img" />
+              </div>
             )}
-            {project?.github && project.github !== '#' && (
-              <a href={project.github} target="_blank" rel="noopener noreferrer" className="btn-o">GitHub ↗</a>
-            )}
-            <Link to="/" className="btn-o">← Back to portfolio</Link>
           </div>
-        </div>
+        </section>
+
+        {/* IN-PROGRESS BANNER (only if present) */}
+        {data.inProgressBanner && (
+          <section className="cs-section">
+            <div className="cs-wrap-inner">
+              <div className="cs-progress-banner reveal">
+                <div className="cs-progress-icon">⚒</div>
+                <div>
+                  <div className="cs-progress-label">Actively Building</div>
+                  <p className="cs-progress-body">{data.inProgressBanner}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* OVERVIEW */}
+        <section className="cs-section">
+          <div className="cs-wrap-inner">
+            <div className="cs-section-label reveal">01 · Overview</div>
+            {data.overview.map((p, i) => (
+              <p key={i} className="cs-prose reveal" style={{ transitionDelay: `${i * 0.05}s` }}>{p}</p>
+            ))}
+          </div>
+        </section>
+
+        {/* STACK */}
+        <section className="cs-section cs-section--alt">
+          <div className="cs-wrap-inner">
+            <div className="cs-section-label reveal">02 · The Stack</div>
+            <div className="cs-stack reveal">
+              {data.stack.map(s => (
+                <span key={s} className="cs-stack-chip">{s}</span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* KEY DECISIONS */}
+        <section className="cs-section">
+          <div className="cs-wrap-inner">
+            <div className="cs-section-label reveal">03 · Key Technical Decisions</div>
+            <div className="cs-decisions">
+              {data.decisions.map((d, i) => (
+                <article key={i} className="cs-decision reveal" style={{ transitionDelay: `${i * 0.06}s` }}>
+                  <h3 className="cs-decision-title">{d.title}</h3>
+                  <p className="cs-decision-body">{d.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* QA / BUG STORY SECTION */}
+        {data.qaSection && (
+          <section className="cs-section cs-section--alt">
+            <div className="cs-wrap-inner">
+              <div className="cs-section-label reveal">04 · {data.qaSection.title}</div>
+              <p className="cs-prose reveal">{data.qaSection.body}</p>
+              <ul className="cs-list reveal">
+                {data.qaSection.examples.map((ex, i) => (
+                  <li key={i} className="cs-list-item">
+                    <span className="cs-list-marker">◈</span>
+                    <span>{ex}</span>
+                  </li>
+                ))}
+              </ul>
+              {data.qaSection.close && (
+                <p className="cs-prose cs-prose--emphasis reveal">{data.qaSection.close}</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* WHAT I LEARNED */}
+        <section className="cs-section">
+          <div className="cs-wrap-inner">
+            <div className="cs-section-label reveal">05 · What I Learned</div>
+            <ul className="cs-list reveal">
+              {data.learned.map((l, i) => (
+                <li key={i} className="cs-list-item">
+                  <span className="cs-list-marker">◇</span>
+                  <span>{l}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* EVOLVING (only if present) */}
+        {data.evolving && data.evolving.length > 0 && (
+          <section className="cs-section cs-section--alt">
+            <div className="cs-wrap-inner">
+              <div className="cs-section-label reveal">06 · Evolving</div>
+              <p className="cs-prose reveal">Sections and features actively in development:</p>
+              <ul className="cs-list reveal">
+                {data.evolving.map((e, i) => (
+                  <li key={i} className="cs-list-item">
+                    <span className="cs-list-marker cs-list-marker--ember">⚒</span>
+                    <span>{e}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
+        {/* RELATED ARTICLES (only if present) */}
+        {data.articles && data.articles.length > 0 && (
+          <section className="cs-section">
+            <div className="cs-wrap-inner">
+              <div className="cs-section-label reveal">{data.evolving ? '07' : '06'} · Related Writing</div>
+              <ul className="cs-articles reveal">
+                {data.articles.map((a, i) => (
+                  <li key={i}>
+                    <a href={a.url} target="_blank" rel="noopener noreferrer" className="cs-article-link">
+                      <span className="cs-article-title">{a.title}</span>
+                      <span className="cs-article-arrow">↗</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        )}
+
+        {/* FINAL CTA */}
+        <section className="cs-section cs-section--alt">
+          <div className="cs-wrap-inner cs-cta">
+            <div className="cs-cta-heading">Interested in the code?</div>
+            <div className="cs-links">
+              {project?.live && (
+                <a href={project.live} target="_blank" rel="noopener noreferrer" className="btn-p">Visit live site ↗</a>
+              )}
+              {project?.github && project.github !== '#' && (
+                <a href={project.github} target="_blank" rel="noopener noreferrer" className="btn-o">View source ↗</a>
+              )}
+              <Link to="/" className="btn-o">← Back to portfolio</Link>
+            </div>
+          </div>
+        </section>
       </main>
+
+      <Footer />
     </>
   );
 }
@@ -1236,6 +1521,7 @@ nav.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 60p
   opacity: 0.75;
   border-width: 1.5px;
 }
+
 
 /* CLEAN LOCATION TAG — angled clip like old cyberpunk, ember filled, sits at bottom-left */
 .pbadge {
@@ -1469,14 +1755,78 @@ nav.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 60p
 .footer { border-top: 1px solid var(--line); padding: 20px 5%; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--muted); position: relative; z-index: 1; }
 
 /* ============ CASE STUDY PAGE ============ */
+.cs-page { position: relative; z-index: 1; padding-top: 60px; }
+
+/* Hero */
+.cs-hero { padding: 60px 4% 40px; }
+.cs-hero-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 60px; align-items: center; }
+@media (max-width: 900px) { .cs-hero-inner { grid-template-columns: 1fr; gap: 40px; } }
+.cs-eyebrow { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--accent); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 20px; }
+.cs-title { font-family: 'Syne', sans-serif; font-size: clamp(2.6rem, 6vw, 4.2rem); font-weight: 900; color: var(--white); line-height: 0.95; margin-bottom: 24px; letter-spacing: -0.02em; }
+.cs-tagline { font-family: 'DM Sans', sans-serif; font-size: clamp(1rem, 1.4vw, 1.15rem); color: var(--soft); line-height: 1.6; margin-bottom: 24px; max-width: 34rem; font-weight: 400; }
+.cs-status { display: inline-flex; align-items: center; gap: 9px; padding: 8px 18px; border-radius: 999px; margin-bottom: 30px; font-family: 'Space Mono', monospace; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; }
+.cs-status--shipped { background: rgba(127,168,138,0.14); border: 1px solid var(--accent); color: var(--accent-bright); }
+[data-theme="light"] .cs-status--shipped { background: rgba(74,119,88,0.14); color: var(--accent); }
+.cs-status--building { background: rgba(200,155,106,0.12); border: 1px solid var(--ember); color: var(--ember); }
+.cs-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: gpulse 2s ease-in-out infinite; }
+
+.cs-hero-visual { display: flex; justify-content: center; }
+.cs-hero-img { max-width: 100%; width: 100%; border-radius: 8px; border: 1px solid var(--line); box-shadow: 0 12px 40px var(--shadow-strong); }
+
+/* Sections */
+.cs-section { padding: 60px 4%; position: relative; }
+.cs-section--alt { background: var(--base-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.cs-wrap-inner { max-width: 900px; margin: 0 auto; }
+.cs-section-label { font-family: 'Space Mono', monospace; font-size: 0.66rem; color: var(--accent); letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 26px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.cs-prose { font-family: 'DM Sans', sans-serif; font-size: 1.02rem; color: var(--soft); line-height: 1.8; margin-bottom: 20px; max-width: 42rem; }
+.cs-prose--emphasis { color: var(--white); font-weight: 500; padding-left: 18px; border-left: 2px solid var(--accent); margin-top: 24px; font-style: italic; }
+.cs-prose--emphasis::before { content: ''; }
+
+/* In-progress banner */
+.cs-progress-banner { display: flex; gap: 20px; align-items: flex-start; padding: 22px 26px; background: rgba(200,155,106,0.08); border: 1px solid rgba(200,155,106,0.4); border-radius: 8px; }
+[data-theme="light"] .cs-progress-banner { background: rgba(181,127,66,0.08); }
+.cs-progress-icon { font-size: 1.8rem; color: var(--ember); flex-shrink: 0; }
+.cs-progress-label { font-family: 'Space Mono', monospace; font-size: 0.66rem; color: var(--ember); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; margin-bottom: 8px; }
+.cs-progress-body { font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--soft); line-height: 1.65; margin: 0; }
+
+/* Stack chips */
+.cs-stack { display: flex; flex-wrap: wrap; gap: 10px; }
+.cs-stack-chip { padding: 9px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--accent-bright); letter-spacing: 0.04em; }
+
+/* Decisions */
+.cs-decisions { display: flex; flex-direction: column; gap: 30px; }
+.cs-decision { padding: 24px 28px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; border-left: 3px solid var(--accent); }
+.cs-decision-title { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--white); margin-bottom: 12px; letter-spacing: -0.01em; }
+.cs-decision-body { font-family: 'DM Sans', sans-serif; font-size: 0.98rem; color: var(--soft); line-height: 1.75; margin: 0; }
+
+/* Lists */
+.cs-list { list-style: none; padding: 0; margin: 20px 0; display: flex; flex-direction: column; gap: 14px; }
+.cs-list-item { display: flex; gap: 14px; font-family: 'DM Sans', sans-serif; font-size: 0.98rem; color: var(--soft); line-height: 1.7; align-items: flex-start; }
+.cs-list-marker { color: var(--accent); flex-shrink: 0; font-size: 0.85rem; margin-top: 5px; }
+.cs-list-marker--ember { color: var(--ember); }
+
+/* Related writing */
+.cs-articles { list-style: none; padding: 0; margin: 0; }
+.cs-articles li { border-bottom: 1px solid var(--line); }
+.cs-articles li:first-child { border-top: 1px solid var(--line); }
+.cs-article-link { display: flex; justify-content: space-between; align-items: center; padding: 20px 4px; text-decoration: none; color: inherit; transition: padding 0.25s ease, background 0.2s; }
+.cs-article-link:hover { padding-left: 14px; padding-right: 14px; background: rgba(127,168,138,0.03); }
+[data-theme="light"] .cs-article-link:hover { background: rgba(74,119,88,0.04); }
+.cs-article-title { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--white); }
+.cs-article-arrow { font-family: 'Space Mono', monospace; font-size: 1rem; color: var(--accent-bright); transition: transform 0.2s; }
+.cs-article-link:hover .cs-article-arrow { transform: translate(2px, -2px); }
+
+/* Final CTA */
+.cs-cta { text-align: center; padding: 20px 0; }
+.cs-cta-heading { font-family: 'Syne', sans-serif; font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; color: var(--white); margin-bottom: 24px; letter-spacing: -0.01em; }
+.cs-cta .cs-links { justify-content: center; }
+
+.cs-links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+
+/* Legacy stub styles (kept for fallback route) */
 .cs-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 100px 4% 60px; position: relative; z-index: 1; }
 .cs-inner { max-width: 640px; text-align: center; }
-.cs-eyebrow { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--accent); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 18px; }
-.cs-title { font-family: 'Syne', sans-serif; font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 900; color: var(--white); line-height: 0.95; margin-bottom: 24px; letter-spacing: -0.02em; }
-.cs-status { display: inline-flex; align-items: center; gap: 9px; padding: 8px 18px; background: rgba(200,155,106,0.1); border: 1px solid rgba(200,155,106,0.35); border-radius: 999px; margin-bottom: 30px; font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--ember); letter-spacing: 0.1em; text-transform: uppercase; }
-.cs-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ember); animation: gpulse 2s ease-in-out infinite; }
 .cs-body { color: var(--soft); font-size: 1rem; line-height: 1.8; margin-bottom: 16px; }
-.cs-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
 
 /* ============ MOCK PROJECT PREVIEWS ============ */
 .mock-preview { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 16px; background: linear-gradient(160deg, var(--surface-raised), var(--surface)); position: relative; overflow: hidden; }
