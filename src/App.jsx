@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useParams } from "react-router-dom"
 import taskquestPreview from './assets/taskquest-preview.png';
 import theBetweenPreview from './assets/the-between-preview.png';
 import yogitaPhoto from './assets/yogita.jpg';
+import Familiar from './Familiar';
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 
@@ -318,7 +319,7 @@ function useCountUp(targetRef, values, duration = 1800) {
 function useTheme() {
   const [theme, setTheme] = useState(() => {
     if (typeof window === "undefined") return "dark";
-    return localStorage.getItem("theme") || "dark";
+    return localStorage.getItem("theme") || "light";
   });
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -465,7 +466,9 @@ function Nav({ activeSection, theme, toggleTheme }) {
             <a href={href} className={`nav-link${activeSection === href.replace("#", "") ? " active" : ""}`} onClick={e => scrollTo(e, href)}>{label}</a>
           </li>
         ))}
-        <li className="nav-toggle-item"><ThemeToggle theme={theme} toggle={toggleTheme} /></li>
+        {theme === 'dark' && (
+  <li className="nav-toggle-item"><ThemeToggle theme={theme} toggle={toggleTheme} /></li>
+)}
       </ul>
     </nav>
   );
@@ -485,7 +488,7 @@ function Hero() {
   const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
   return (
-    <section id="hero" className="hero" ref={heroRef} aria-label="Introduction">
+    <section id="hero" data-familiar-key="hero" className="hero" ref={heroRef} aria-label="Introduction">
       <div className="hero-grid">
         <div className="hero-left">
           <div className="status-dot" role="status" aria-label="Available for work in Ontario and Remote">
@@ -536,7 +539,7 @@ function SectionLabel({ number, label }) {
 
 function About() {
   return (
-    <section id="about" className="section section--alt" aria-labelledby="about-heading">
+    <section id="about" data-familiar-key="about" className="section section--alt" aria-labelledby="about-heading">
       <div className="sw">
         <SectionLabel number="01" label="About" />
         <div className="about-grid reveal">
@@ -594,36 +597,43 @@ function About() {
 
 function Experience() {
   return (
-    <section id="experience" className="section" aria-labelledby="exp-heading">
+    <section id="experience" data-familiar-key="experience" className="section" aria-labelledby="exp-heading">
       <div className="sw">
         <SectionLabel number="02" label="Work Experience" />
         <h2 id="exp-heading" className="sr-only">Work Experience</h2>
         <div className="exp-list">
-          {EXPERIENCE.map((job, i) => (
-            <article key={i} className={`exp-card card reveal tone-${job.tone}`} style={{ transitionDelay: `${i * 0.08}s` }}>
-              <div className="exp-header">
-                <div className="exp-header-left">
-                  <div className="exp-icon"><span>{job.icon}</span></div>
-                  <div>
-                    <h3 className="exp-role">{job.role}</h3>
-                    <div className="exp-company">{job.company}</div>
+          {EXPERIENCE.map((job, i) => {
+            const familiarKey =
+              job.company.includes("Globalstep") ? "exp_globalstep" :
+              job.company.includes("Self-Employed") ? "exp_freelance" :
+              job.company.includes("GaoTek") ? "exp_gaotek" :
+              job.company.includes("DigiiDunia") ? "exp_digiidunia" : null;
+            return (
+              <article key={i} data-familiar-key={familiarKey} className={`exp-card card reveal tone-${job.tone}`} style={{ transitionDelay: `${i * 0.08}s` }}>
+                <div className="exp-header">
+                  <div className="exp-header-left">
+                    <div className="exp-icon"><span>{job.icon}</span></div>
+                    <div>
+                      <h3 className="exp-role">{job.role}</h3>
+                      <div className="exp-company">{job.company}</div>
+                    </div>
+                  </div>
+                  <div className="exp-right">
+                    <div className="exp-period-badge">{job.period}</div>
+                    <div className="exp-loc">◈ {job.location}</div>
                   </div>
                 </div>
-                <div className="exp-right">
-                  <div className="exp-period-badge">{job.period}</div>
-                  <div className="exp-loc">◈ {job.location}</div>
+                <div className="exp-bullets-grid">
+                  {job.points.map((pt, j) => (
+                    <div key={j} className="exp-bullet-item">
+                      <span className="exp-bullet-dot" />
+                      <span>{pt}</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="exp-bullets-grid">
-                {job.points.map((pt, j) => (
-                  <div key={j} className="exp-bullet-item">
-                    <span className="exp-bullet-dot" />
-                    <span>{pt}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -634,7 +644,7 @@ function Experience() {
 
 function Skills() {
   return (
-    <section id="skills" className="section section--alt" aria-labelledby="skills-heading">
+    <section id="skills" data-familiar-key="skills" className="section section--alt" aria-labelledby="skills-heading">
       <div className="sw">
         <SectionLabel number="03" label="Skills & Tech" />
         <h2 id="skills-heading" className="sr-only">Skills and Technologies</h2>
@@ -743,7 +753,7 @@ function Projects() {
             const isHovered = hovered === p.title;
             const previewImg = previews[p.preview];
             return (
-              <article key={p.title} className="card pcard reveal" style={{ transitionDelay: `${i * 0.07}s` }}
+              <article key={p.title} data-familiar-key={`proj_${p.slug.replace(/-/g, '_')}`} className="card pcard reveal" style={{ transitionDelay: `${i * 0.07}s` }}
                 onMouseEnter={() => setHovered(p.title)} onMouseLeave={() => setHovered(null)}>
                 <div className="pstrip">
                   {previewImg ? (
@@ -799,7 +809,7 @@ function Projects() {
 
 function Articles() {
   return (
-    <section id="articles" className="section section--alt" aria-labelledby="articles-heading">
+    <section id="articles" data-familiar-key="articles" className="section section--alt" aria-labelledby="articles-heading">
       <div className="sw">
         <SectionLabel number="05" label="Articles & Writing" />
         <h2 id="articles-heading" className="sr-only">Articles and Writing</h2>
@@ -834,7 +844,7 @@ function Articles() {
 
 function GameCredits() {
   return (
-    <section id="credits" className="section" aria-labelledby="credits-heading">
+    <section id="credits" data-familiar-key="credits" className="section" aria-labelledby="credits-heading">
       <div className="sw">
         <SectionLabel number="06" label="Game Credits" />
         <h2 id="credits-heading" className="sr-only">Game Credits</h2>
@@ -908,7 +918,7 @@ function Contact() {
   };
 
   return (
-    <section id="contact" className="section" aria-labelledby="contact-heading">
+    <section id="contact" data-familiar-key="contact" className="section" aria-labelledby="contact-heading">
       <div className="sw" style={{ textAlign: "center" }}>
         <SectionLabel number="07" label="Let's Talk" />
         <h2 id="contact-heading" className="contact-heading">
@@ -1110,7 +1120,9 @@ function CaseStudy() {
           <Link to="/" className="nav-logo">yogita<span className="logo-dot">.builds</span></Link>
           <ul className="nav-links">
             <li><Link to="/" className="nav-link">← Back to portfolio</Link></li>
-            <li className="nav-toggle-item"><ThemeToggle theme={theme} toggle={toggleTheme} /></li>
+            {theme === 'dark' && (
+  <li className="nav-toggle-item"><ThemeToggle theme={theme} toggle={toggleTheme} /></li>
+)}
           </ul>
         </nav>
         <main className="cs-wrap">
@@ -1133,9 +1145,12 @@ function CaseStudy() {
         <Link to="/" className="nav-logo">yogita<span className="logo-dot">.builds</span></Link>
         <ul className="nav-links">
           <li><Link to="/" className="nav-link">← Back to portfolio</Link></li>
-          <li className="nav-toggle-item"><ThemeToggle theme={theme} toggle={toggleTheme} /></li>
+          {theme === 'dark' && (
+  <li className="nav-toggle-item"><ThemeToggle theme={theme} toggle={toggleTheme} /></li>
+)}
         </ul>
       </nav>
+      <Familiar theme={theme} toggleTheme={toggleTheme} />
 
       <main className="cs-page">
         {/* HERO */}
@@ -1167,7 +1182,7 @@ function CaseStudy() {
 
         {/* IN-PROGRESS BANNER (only if present) */}
         {data.inProgressBanner && (
-          <section className="cs-section">
+          <section className="cs-section" data-familiar-key="cs_progress">
             <div className="cs-wrap-inner">
               <div className="cs-progress-banner reveal">
                 <div className="cs-progress-icon">⚒</div>
@@ -1181,7 +1196,7 @@ function CaseStudy() {
         )}
 
         {/* OVERVIEW */}
-        <section className="cs-section">
+        <section className="cs-section" data-familiar-key="cs_overview">
           <div className="cs-wrap-inner">
             <div className="cs-section-label reveal">01 · Overview</div>
             {data.overview.map((p, i) => (
@@ -1191,7 +1206,7 @@ function CaseStudy() {
         </section>
 
         {/* STACK */}
-        <section className="cs-section cs-section--alt">
+        <section className="cs-section cs-section--alt" data-familiar-key="cs_stack">
           <div className="cs-wrap-inner">
             <div className="cs-section-label reveal">02 · The Stack</div>
             <div className="cs-stack reveal">
@@ -1219,7 +1234,7 @@ function CaseStudy() {
 
         {/* QA / BUG STORY SECTION */}
         {data.qaSection && (
-          <section className="cs-section cs-section--alt">
+          <section className="cs-section cs-section--alt" data-familiar-key="cs_qa">
             <div className="cs-wrap-inner">
               <div className="cs-section-label reveal">04 · {data.qaSection.title}</div>
               <p className="cs-prose reveal">{data.qaSection.body}</p>
@@ -1239,7 +1254,7 @@ function CaseStudy() {
         )}
 
         {/* WHAT I LEARNED */}
-        <section className="cs-section">
+        <section className="cs-section" data-familiar-key="cs_learned">
           <div className="cs-wrap-inner">
             <div className="cs-section-label reveal">05 · What I Learned</div>
             <ul className="cs-list reveal">
@@ -1255,7 +1270,7 @@ function CaseStudy() {
 
         {/* EVOLVING (only if present) */}
         {data.evolving && data.evolving.length > 0 && (
-          <section className="cs-section cs-section--alt">
+          <section className="cs-section cs-section--alt" data-familiar-key="cs_evolving">
             <div className="cs-wrap-inner">
               <div className="cs-section-label reveal">06 · Evolving</div>
               <p className="cs-prose reveal">Sections and features actively in development:</p>
@@ -1273,7 +1288,7 @@ function CaseStudy() {
 
         {/* RELATED ARTICLES (only if present) */}
         {data.articles && data.articles.length > 0 && (
-          <section className="cs-section">
+          <section className="cs-section" data-familiar-key="cs_articles">
             <div className="cs-wrap-inner">
               <div className="cs-section-label reveal">{data.evolving ? '07' : '06'} · Related Writing</div>
               <ul className="cs-articles reveal">
@@ -1291,7 +1306,7 @@ function CaseStudy() {
         )}
 
         {/* FINAL CTA */}
-        <section className="cs-section cs-section--alt">
+        <section className="cs-section cs-section--alt" data-familiar-key="cs_cta">
           <div className="cs-wrap-inner cs-cta">
             <div className="cs-cta-heading">Interested in the code?</div>
             <div className="cs-links">
@@ -1327,6 +1342,7 @@ function Home() {
       <div className="grid-bg" aria-hidden="true" />
       <div className="glow-pool" aria-hidden="true" />
       <ParticleCanvas />
+      <Familiar theme={theme} toggleTheme={toggleTheme} />
       <Nav activeSection={activeSection} theme={theme} toggleTheme={toggleTheme} />
       <main id="main" tabIndex={-1}>
         <Hero />
