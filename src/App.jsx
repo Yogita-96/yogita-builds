@@ -1044,32 +1044,40 @@ const CASE_STUDIES = {
 
   "the-between": {
     title: "The Between",
-    tagline: "A turn-based dark fantasy RPG built entirely in React. Original world, original combat, no game engine.",
+    tagline: "A turn-based dark fantasy RPG built entirely in React. Two playable characters, three enemy tiers, hand-drawn card combat, and a Sekiro-inspired posture system — no game engine.",
     status: "building",
     statusLabel: "⟳ Building in public",
     heroPreview: "thebetween",
-    inProgressBanner: "The Between is actively in development. This case study is being written alongside the game — sections marked 'evolving' will grow as new mechanics ship. Follow along on the Instagram build-in-public account or check the repo for the latest.",
+    inProgressBanner: "The Between is actively in development. This case study is being written alongside the game — sections marked 'evolving' will grow as new mechanics ship. Currently in playtest — the live link is a playable build, not a finished product. Follow along on the Instagram build-in-public account (@yogita.builds_) or check the repo for the latest.",
     overview: [
       "The Between is a turn-based dark fantasy RPG set in a liminal space that collects things mid-state — things lost, half-formed, or forgotten. Two playable characters, three enemy tiers including a boss with hidden intents, a card-draw combat system with stagger mechanics, and a Sekiro-inspired posture system where damage taken becomes damage dealt.",
       "The point of the project isn't the game — it's proving that React's state model is powerful enough to run something this systemic. No game engine. No physics library. Just useReducer, useState, and a rigorous design of what each state transition means.",
     ],
-    stack: ["React 19", "useReducer", "Custom Hooks", "CSS3", "Vite", "localStorage"],
+    stack: ["React 19", "useState + Refs", "Custom Hooks", "React Router", "CSS3", "Vite", "localStorage"],
     decisions: [
-      {
-        title: "useReducer for combat, useState for UI",
-        body: "Combat state is a state machine — turn phase, hand, enemy intent, stagger meter, player and enemy HP, posture, cards played. Managing that with useState alone would mean stale closures and race conditions. useReducer collapses every combat action into a single dispatch that returns the next state, atomically. UI state (menu open, animation playing) stays on useState because it doesn't need history.",
+     {
+        title: "State-machine architecture in raw useState + refs",
+        body: "Combat has 20+ pieces of interlocking state: turn phase, hand, enemy intent, both posture meters, both HP, both stagger states, discount flags, penalty flags, hemorrhage bleed, expose duration, backstepping, evading, enduring. I built this as a strict state machine — each action transitions the game through predictable phases (player → enemy_windup → enemy_attack → cleanup → player). No useReducer, because the derived-state and effect-driven parts (enemy AI, floating numbers, HP flash) fit useState + refs more naturally. The tradeoff: I take on the discipline useReducer would enforce automatically. The upside: every phase and transition is inspectable in dev tools, and I never fight the framework.",
       },
       {
-        title: "Card system with stagger-window mechanics",
-        body: "Each character has a deck of ~12 cards. Every turn draws 4. Some cards are always playable, some require stamina, some scale damage based on the target's posture. Sable's Exploit deals 14 damage normally, 28 if the enemy is staggered — that's not a hardcoded doubling, it reads live combat state to compute the multiplier. The system is data-driven: adding a new card is one entry in the deck config, not new logic.",
+        title: "Data-driven card system with chain mechanics",
+        body: "Each character has a 13-card base pool. Every turn draws 4 with anti-repeat logic (last hand's cards are held back one cycle). Cards are pure config: name, cost, damage, posture, plus an optional 'special' key that maps to a mechanic. Sable's Exploit deals 14 damage normally, 28 if the enemy is staggered — that's live combat state reading, not hardcoded doubling. Ghost Step recovers posture AND discounts the next attack, threading a setup-payoff chain across turns. Vanish→Slit Throat, Death Mark→any damaging card, and the Ghost Step chain all leverage the same conditional-availability system. Adding a new card is one entry in the config plus (if it does something novel) one branch in the special handler.",
       },
       {
         title: "Enemy intent → execute loop",
         body: "Every enemy telegraphs their next action at the start of the turn (icon + damage number), then executes it on their turn. Boss phase 2 hides intents until the player has staggered them once — this small change makes the encounter dramatically harder without new mechanics, just information asymmetry. Players stop optimizing and start reading the fight.",
       },
-      {
+     {
         title: "Run persistence, not mid-combat save",
         body: "The game saves on map arrival, not mid-turn. Mid-combat save creates too many edge cases (interrupted animations, in-flight card effects, dispatched-but-not-committed state) for a solo dev on a first pass. Deferring it to a future 'Option B' pattern let me ship the current version without a save system that could corrupt runs. QA calls this scoping. Recruiters call it judgment.",
+      },
+      {
+        title: "Turn readability as a first-class design problem",
+        body: "Early combat felt like a wind — cards played, damage happened, the log filled up, and players (myself included) couldn't tell what had actually landed. The fix wasn't more information, it was pacing. I broke the enemy turn into three visible phases: label change and card fade (700ms) → intent box glows and pulses as the enemy winds up (1100ms) → attack lands with floating damage numbers over the target HP bar, red flash and shake on the bar itself (1400ms cleanup). Total time added: ~2 seconds. What players get: they can actually see what happened, which was the entire point. This is the difference between 'the mechanic works' and 'the mechanic feels right to play.'",
+      },
+      {
+        title: "Soft-lock recovery: the Skip Turn button",
+        body: "In a stamina-gated card game, players sometimes draw a hand where nothing is playable — every card too expensive, every conditional card locked. Rather than force a loss, a contextual Skip Turn button appears only in that specific state. It costs: character-specific posture damage (Kaen 20, Sable 10) and a stamina penalty next turn (Kaen 2, Sable 3). The costs reinforce identity — Kaen's tank posture cracks under pressure, Sable's rhythm breaks. The button lives at the top corner normally and centers itself above the turn label when active, pulling the Flee button with it. Small feature, one full evening of design + implementation, and it makes the game genuinely more forgiving without softening it.",
       },
     ],
     qaSection: {
@@ -1081,18 +1089,21 @@ const CASE_STUDIES = {
         "Which triggered the enemy to act again before the player's turn had actually resumed",
         "Fix: an `enemyTurnProcessing` ref that guarded the effect body against re-entry — the effect can re-fire freely, but the body only runs to completion once per enemy turn",
       ],
-      close: "Debugging this taught me something I'd only half-understood: useEffect deps trigger the effect, but the effect body is your responsibility to make idempotent. The ref pattern isn't idiomatic React — it's a workaround for a real constraint. Knowing when to reach for it is the difference between fighting the framework and using it.",
+      close: "Debugging this taught me something I'd only half-understood: useEffect deps trigger the effect, but the effect body is your responsibility to make idempotent. The ref pattern isn't idiomatic React — it's a workaround for a real constraint. Knowing when to reach for it is the difference between fighting the framework and using it. The same ref-guard pattern later made the phased enemy turn possible: without a re-entry guard, breaking the turn into three timed phases would have compounded the original bug tenfold.",
     },
     learned: [
-      "State machines aren't a library — they're a discipline. useReducer just gives you the shape.",
-      "Game feel is 90% timing. A card animation at 300ms feels responsive; at 600ms it feels sluggish. This applies to any UI, not just games.",
+      "State machines aren't a library — they're a discipline. useState + refs will get you further than you'd think, if you're rigorous about phase transitions.",
+      "Game feel is 90% timing. A card animation at 300ms feels responsive; at 600ms it feels sluggish. Turn resolution at 900ms felt like a blink; at 3 seconds it feels deliberate. This applies to any UI, not just games.",
+      "Card game descriptions are UX writing. 'posture +12' vs 'enemy posture +12' is a five-character change that eliminates an entire class of player misreadings. Words in a UI are code that runs on human brains.",
       "Building without a framework taught me more about React in six months than three years of professional work did. Constraints are a teacher.",
     ],
     articles: [],
     evolving: [
-      "Phase 2 AAA game-feel work (screen shake, floating damage numbers, hit flashes, boss phase transitions) — planned, not started",
+      "Screen shake on stagger break and dramatic boss phase 2 transition",
+      "Enemy hit flash on character silhouettes (currently only HP bars react)",
       "A dedicated 'run complete' screen after the Cartographer boss",
-      "True pause/resume mid-combat preserving full state (deferred until the Steam expansion)",
+      "True pause/resume mid-combat preserving full state (deferred until a Steam-scope expansion)",
+      "External playtest feedback round with AAA-tester friends (Ubisoft & Bandai Namco QA background) — currently prepping",
     ],
   },
 };
