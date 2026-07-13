@@ -1,70 +1,104 @@
-# Getting Started with Create React App
+# yogita.builds
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Personal portfolio and case-study site — [yogitabuilds.dev](https://yogitabuilds.dev)
 
-## Available Scripts
+Frontend developer portfolio featuring project case studies, articles, AAA game QA credits (Ubisoft & Bandai Namco), and a chibi familiar that follows the cursor across every section.
 
-In the project directory, you can run:
+Built in React with Vite. No Next.js, no framework layer. Just React Router and a hand-tuned CSS design system with light/dark themes.
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## What's here
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **Landing page** — About, Experience, Skills, Projects, Articles, Game Credits, Contact — all single-page with scroll-spy navigation
+- **Case study pages** — Deep-dives on TaskQuest and The Between at `/case-study/:slug`
+- **Familiar companion** — A small animated character that walks between sections, sits when idle, dusts off when interrupted, and toggles the theme when clicked
+- **Formspree contact form** with client-side validation
+- **Live GitHub contribution graph** pulled via public API with a labeled fallback
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Tech stack
 
-### `npm run build`
+| Layer      | Choice                                                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Build      | Vite                                                                                                                       |
+| Framework  | React 19                                                                                                                   |
+| Routing    | React Router                                                                                                               |
+| Styling    | Vanilla CSS with CSS variables (light/dark theme tokens)                                                                   |
+| State      | useState + custom hooks (`useTypewriter`, `useScrollSpy`, `useReducedMotion`, `useScrollReveal`, `useCountUp`, `useTheme`) |
+| Contact    | Formspree API                                                                                                              |
+| Deployment | Vercel                                                                                                                     |
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Design principles
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+**Sage-family palette, tonal not chromatic.** One hue across the site — deeper sage in light mode, muted sage in dark mode. Ember accents (`#C89B6A`) as the only warm counterpoint. No gradient chaos.
 
-### `npm run eject`
+**Light mode as default landing state.** Familiar chibi's warm brown outfit was designed for sage — the palette accommodates the character, not the other way around.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+**Particle canvas that respects `prefers-reduced-motion`.** Slow drift, ~38 points, theme-aware colors.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+**Corner-bracket accents on interactive elements.** Same visual grammar carries into The Between's combat UI — small consistency thread across projects.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+**Typography.** Space Mono for code-adjacent labels, Syne for headings, DM Sans for body, JetBrains Mono for terminal-style eyebrows.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## Local development
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+npm install
+npm run dev
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Runs on `http://localhost:5173` by default.
 
-### Code Splitting
+## Build
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```bash
+npm run build
+npm run preview
+```
 
-### Analyzing the Bundle Size
+Preview serves the production build locally before deploying.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+---
 
-### Making a Progressive Web App
+## Deployment
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Automatic Vercel deploys on push to `main`. The site rebuilds on every merge.
 
-### Advanced Configuration
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Case studies covered
 
-### Deployment
+- **[TaskQuest](https://yogitabuilds.dev/case-study/taskquest)** — Gamified React task manager with RPG quest system, XP, streaks, level-up banners
+- **[The Between](https://yogitabuilds.dev/case-study/the-between)** — Turn-based dark fantasy RPG built entirely in React, no game engine — [play the playtest build](https://the-between-navy.vercel.app)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+---
 
-### `npm run build` fails to minify
+## Credits
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **Familiar character sprites** — 8 hand-directed AI-generated frames, animated via a state machine that watches cursor position, velocity, and idle time
+- **Character art for The Between** — AI-generated concept art, refined and directed by me
+- **Fonts** — Google Fonts (Space Mono, Syne, DM Sans, JetBrains Mono)
+- **Devicon icons** — Skill grid iconography via CDN
+
+---
+
+## Contact
+
+- **Email** — [yogitaa.rm@gmail.com](mailto:yogitaa.rm@gmail.com)
+- **LinkedIn** — [linkedin.com/in/Yogita-M](https://linkedin.com/in/Yogita-M)
+- **GitHub** — [github.com/Yogita-96](https://github.com/Yogita-96)
+- **MobyGames (game credits)** — [profile](https://www.mobygames.com/person/1835643/yogita-yogita/)
+
+---
+
+## License
+
+Personal portfolio code. Feel free to look, but please don't clone-and-rebrand.
+
+© 2026 yogita.builds
