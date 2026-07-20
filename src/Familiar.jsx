@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-
 import familiarStanding from './assets/familiar/familiar-standing.png';
 import familiarWalking from './assets/familiar/familiar-walking.png';
 import familiarRunning from './assets/familiar/familiar-running.png';
@@ -10,7 +9,6 @@ import familiarGettingUp from './assets/familiar/familiar-getting-up.png';
 import familiarDoor from './assets/familiar/familiar-door-toggle.png';
 
 // ─── FRAME MAP ────────────────────────────────────────────────────────────────
-
 const FRAMES = {
   standing: familiarStanding,
   walking: familiarWalking,
@@ -25,7 +23,6 @@ const FRAMES = {
 // Attached to specific data-familiar-key attributes on the page.
 // She speaks when cursor hovers a targeted element.
 // Voice: third person, warm-dry-affectionate, dry-narrator energy.
-
 const SPEECH_LINES = {
   // Hero + general sections
   hero: [
@@ -157,16 +154,28 @@ const SPEECH_LINES = {
   ],
 };
 
-// ─── HOOKS ────────────────────────────────────────────────────────────────────
+// ─── MOBILE DETECTION ─────────────────────────────────────────────────────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 900);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+  return isMobile;
+}
 
-// Track cursor position + velocity + recent distance traveled
-function useCursor() {
+// ─── HOOKS ────────────────────────────────────────────────────────────────────
+// Track cursor position + velocity + recent distance traveled (DESKTOP)
+function useCursor(enabled) {
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [velocity, setVelocity] = useState(0);
   const lastPos = useRef({ x: 0, y: 0, t: 0 });
-  const recentMovementsRef = useRef([]); // last ~300ms of movement samples
+  const recentMovementsRef = useRef([]);
 
   useEffect(() => {
+    if (!enabled) return;
     const handle = (e) => {
       const now = performance.now();
       const dt = now - lastPos.current.t;
@@ -175,8 +184,6 @@ function useCursor() {
         const dy = e.clientY - lastPos.current.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         setVelocity(dist / dt);
-
-        // Track recent movements — keep only last 300ms
         recentMovementsRef.current.push({ dist, t: now });
         recentMovementsRef.current = recentMovementsRef.current.filter(m => now - m.t < 300);
       }
@@ -185,27 +192,51 @@ function useCursor() {
     };
     window.addEventListener("mousemove", handle);
     return () => window.removeEventListener("mousemove", handle);
-  }, []);
+  }, [enabled]);
 
   return { pos, velocity, recentMovementsRef };
 }
 
-// Character position — lives in the right margin, tracks cursor Y only
-// This keeps her OUT of the reading area entirely
+// Track scroll velocity + recent scroll distance (MOBILE)
+function useScroll(enabled) {
+  const [scrollY, setScrollY] = useState(0);
+  const [velocity, setVelocity] = useState(0);
+  const lastScroll = useRef({ y: 0, t: 0 });
+  const recentScrollsRef = useRef([]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const handle = () => {
+      const now = performance.now();
+      const y = window.scrollY;
+      const dt = now - lastScroll.current.t;
+      if (dt > 0) {
+        const dy = Math.abs(y - lastScroll.current.y);
+        setVelocity(dy / dt);
+        recentScrollsRef.current.push({ dist: dy, t: now });
+        recentScrollsRef.current = recentScrollsRef.current.filter(m => now - m.t < 400);
+      }
+      lastScroll.current = { y, t: now };
+      setScrollY(y);
+    };
+    window.addEventListener("scroll", handle, { passive: true });
+    return () => window.removeEventListener("scroll", handle);
+  }, [enabled]);
+
+  return { scrollY, velocity, recentScrollsRef };
+}
+
+// Character position — desktop version (tracks cursor Y in right margin)
 function useCharacterPosition(cursorPos) {
   const [charPos, setCharPos] = useState({ x: 0, y: 0 });
   const rafRef = useRef();
   const targetRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
-    // Determine which side she should live on based on cursor position
-    // Default: right side of viewport (85% across)
     const viewportWidth = window.innerWidth;
     const marginX = viewportWidth > 1400
-      ? viewportWidth * 0.90  // Wide screens: further right
-      : viewportWidth * 0.87; // Normal: right margin
-
-    // Y tracks cursor Y with an offset so she's slightly below cursor
+      ? viewportWidth * 0.90
+      : viewportWidth * 0.87;
     targetRef.current = {
       x: marginX,
       y: cursorPos.y + 20,
@@ -219,7 +250,6 @@ function useCharacterPosition(cursorPos) {
         const dy = targetRef.current.y - current.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 0.5) return current;
-        // Very heavy lag — she gets left behind on scroll and has to sprint
         const lerp = dist > 500 ? 0.008 : dist > 200 ? 0.005 : 0.004;
         return {
           x: current.x + dx * lerp,
@@ -235,19 +265,18 @@ function useCharacterPosition(cursorPos) {
   return charPos;
 }
 
-// State machine — computes current character state
-function useFamiliarState(cursorPos, velocity, charPos, speechVisible, recentMovementsRef) {
+// State machine — DESKTOP (cursor-based)
+function useFamiliarStateDesktop(cursorPos, velocity, charPos, speechVisible, recentMovementsRef) {
   const [state, setState] = useState("standing");
   const [idleSubstate, setIdleSubstate] = useState("sitting_sip");
   const lastMoveTimeRef = useRef(performance.now());
   const stateEnteredAtRef = useRef(performance.now());
   const stateRef = useRef(state);
   const idleAlternateTimerRef = useRef(null);
-
-  // Live refs — updated every render, read from stable poll interval below
   const cursorPosRef = useRef(cursorPos);
   const charPosRef = useRef(charPos);
   const speechVisibleRef = useRef(speechVisible);
+
   useEffect(() => { cursorPosRef.current = cursorPos; }, [cursorPos]);
   useEffect(() => { charPosRef.current = charPos; }, [charPos]);
   useEffect(() => { speechVisibleRef.current = speechVisible; }, [speechVisible]);
@@ -257,14 +286,12 @@ function useFamiliarState(cursorPos, velocity, charPos, speechVisible, recentMov
     stateEnteredAtRef.current = performance.now();
   }, [state]);
 
-  // Track when cursor last moved
   useEffect(() => {
     if (velocity > 0.03) {
       lastMoveTimeRef.current = performance.now();
     }
   }, [velocity]);
 
-  // Main state machine — STABLE interval that doesn't reset on cursor moves
   useEffect(() => {
     const interval = setInterval(() => {
       const cp = cursorPosRef.current;
@@ -276,37 +303,22 @@ function useFamiliarState(cursorPos, velocity, charPos, speechVisible, recentMov
       const timeSinceMove = now - lastMoveTimeRef.current;
       const timeInState = now - stateEnteredAtRef.current;
       const currentState = stateRef.current;
-
-      // Recent movement: sum of distance covered in the last 300ms
       const recentDist = recentMovementsRef.current.reduce((sum, m) => sum + m.dist, 0);
 
-      // GETTING_UP: short if speech is showing (she needs to point), longer otherwise
-      // Then always → standing. Next poll decides walking/running.
       if (currentState === "getting_up") {
         const dustOffDuration = sv ? 200 : 600;
-        if (timeInState > dustOffDuration) {
-          setState("standing");
-        }
+        if (timeInState > dustOffDuration) setState("standing");
         return;
       }
-
-      // IDLE: exit only when cursor moves recently — MUST go through getting_up
       if (currentState === "idle") {
-        if (timeSinceMove < 300) {
-          setState("getting_up");
-        }
+        if (timeSinceMove < 300) setState("getting_up");
         return;
       }
-
-      // Enter idle: cursor still 5+ seconds, close vertically, been in state 2s+
-      // AND no speech is active (don't sit down mid-conversation)
       if (timeSinceMove > 5000 && verticalDistance < 100 && timeInState > 2000 && !sv) {
         setState("idle");
         setIdleSubstate("sitting_sip");
         return;
       }
-
-      // Running: cursor covered lots of ground recently OR she's far behind
       if (recentDist > 200 || verticalDistance > 250) {
         if (currentState !== "running") setState("running");
       } else if (verticalDistance > 40) {
@@ -315,11 +327,9 @@ function useFamiliarState(cursorPos, velocity, charPos, speechVisible, recentMov
         if (currentState !== "standing") setState("standing");
       }
     }, 100);
-
     return () => clearInterval(interval);
-  }, [recentMovementsRef]); // stable — recentMovementsRef is a ref, doesn't change
+  }, [recentMovementsRef]);
 
-  // Alternate idle substates every 5s
   useEffect(() => {
     if (state !== "idle") {
       clearInterval(idleAlternateTimerRef.current);
@@ -338,25 +348,106 @@ function useFamiliarState(cursorPos, velocity, charPos, speechVisible, recentMov
       setState("getting_up");
     }
   }, []);
+
   return { state, currentFrame, wakeUp };
 }
 
-// Override current frame to pointing when speech is active.
-// getting_up ALWAYS takes precedence — she must fully stand up before pointing.
+// State machine — MOBILE (scroll-based)
+function useFamiliarStateMobile(velocity, speechVisible, recentScrollsRef) {
+  const [state, setState] = useState("standing");
+  const [idleSubstate, setIdleSubstate] = useState("sitting_sip");
+  const lastMoveTimeRef = useRef(performance.now());
+  const stateEnteredAtRef = useRef(performance.now());
+  const stateRef = useRef(state);
+  const idleAlternateTimerRef = useRef(null);
+  const speechVisibleRef = useRef(speechVisible);
+
+  useEffect(() => { speechVisibleRef.current = speechVisible; }, [speechVisible]);
+  useEffect(() => {
+    stateRef.current = state;
+    stateEnteredAtRef.current = performance.now();
+  }, [state]);
+
+  useEffect(() => {
+    if (velocity > 0.5) {
+      lastMoveTimeRef.current = performance.now();
+    }
+  }, [velocity]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const sv = speechVisibleRef.current;
+      const now = performance.now();
+      const timeSinceMove = now - lastMoveTimeRef.current;
+      const timeInState = now - stateEnteredAtRef.current;
+      const currentState = stateRef.current;
+      const recentScrollDist = recentScrollsRef.current.reduce((sum, m) => sum + m.dist, 0);
+
+      if (currentState === "getting_up") {
+        const dustOffDuration = sv ? 200 : 600;
+        if (timeInState > dustOffDuration) setState("standing");
+        return;
+      }
+      if (currentState === "idle") {
+        if (timeSinceMove < 300) setState("getting_up");
+        return;
+      }
+      // Enter idle: no scroll 5s+, been in state 2s+, no speech
+      if (timeSinceMove > 5000 && timeInState > 2000 && !sv) {
+        setState("idle");
+        setIdleSubstate("sitting_sip");
+        return;
+      }
+      // Scroll-based movement:
+      // Fast scroll (>400px in 400ms) → running
+      // Any recent scroll → walking
+      // No recent scroll → standing
+      if (recentScrollDist > 400) {
+        if (currentState !== "running") setState("running");
+      } else if (recentScrollDist > 20) {
+        if (currentState !== "walking") setState("walking");
+      } else {
+        if (currentState !== "standing") setState("standing");
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [recentScrollsRef]);
+
+  useEffect(() => {
+    if (state !== "idle") {
+      clearInterval(idleAlternateTimerRef.current);
+      return;
+    }
+    idleAlternateTimerRef.current = setInterval(() => {
+      setIdleSubstate((s) => (s === "sitting_sip" ? "sitting_look" : "sitting_sip"));
+    }, 5000);
+    return () => clearInterval(idleAlternateTimerRef.current);
+  }, [state]);
+
+  const currentFrame = state === "idle" ? idleSubstate : state;
+  const wakeUp = useCallback(() => {
+    if (stateRef.current === "idle") {
+      lastMoveTimeRef.current = performance.now();
+      setState("getting_up");
+    }
+  }, []);
+
+  return { state, currentFrame, wakeUp };
+}
+
 function useSpeakingFrame(baseFrame, speechVisible, state, wasIdle) {
-  // If state is getting_up but she wasn't just sitting, skip the frame — show standing instead
-  // (getting_up only makes visual sense after sitting frames)
   if (state === "getting_up") {
     return wasIdle ? "getting_up" : "standing";
   }
-  if (state === "idle") return baseFrame; // sitting frames win — she can't point while sitting
+  if (state === "idle") return baseFrame;
   return speechVisible ? "pointing" : baseFrame;
 }
 
-// Detect which speech target the cursor is over via data-familiar-key
-function useHoverTarget() {
+// Detect which speech target the cursor is over — DESKTOP
+function useHoverTarget(enabled) {
   const [target, setTarget] = useState(null);
   useEffect(() => {
+    if (!enabled) return;
     const handle = (e) => {
       const el = e.target.closest("[data-familiar-key]");
       const key = el?.getAttribute("data-familiar-key") || null;
@@ -364,34 +455,84 @@ function useHoverTarget() {
     };
     window.addEventListener("mousemove", handle);
     return () => window.removeEventListener("mousemove", handle);
-  }, []);
+  }, [enabled]);
   return target;
 }
 
-// Speech bubble — triggers when cursor hovers a new speech target
-function useSpeech(targetKey, active) {
+// Detect which data-familiar-key section is most visible — MOBILE
+// Uses IntersectionObserver, throttled to change target at most every ~2s
+function useScrollTarget(enabled) {
+  const [target, setTarget] = useState(null);
+  const lastChangeRef = useRef(0);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const elements = document.querySelectorAll("[data-familiar-key]");
+    if (elements.length === 0) return;
+
+    const visibility = new Map();
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const key = entry.target.getAttribute("data-familiar-key");
+        visibility.set(key, entry.intersectionRatio);
+      });
+
+      // Find the most visible target
+      let bestKey = null;
+      let bestRatio = 0.3; // must be at least 30% visible to trigger
+      visibility.forEach((ratio, key) => {
+        if (ratio > bestRatio) {
+          bestRatio = ratio;
+          bestKey = key;
+        }
+      });
+
+      // Throttle changes — max once every 2 seconds
+      const now = performance.now();
+      if (bestKey && now - lastChangeRef.current > 800) {
+        setTarget(prev => {
+          if (prev === bestKey) return prev;
+          lastChangeRef.current = now;
+          return bestKey;
+        });
+      }
+    }, { threshold: [0.1, 0.3, 0.5, 0.75] });
+
+    elements.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  return target;
+}
+
+function useSpeech(targetKey, active, isMobile) {
   const [line, setLine] = useState(null);
   const [visible, setVisible] = useState(false);
   const hideTimerRef = useRef();
   const showTimerRef = useRef();
   const lastTargetRef = useRef(null);
+  const lastSpeechTimeRef = useRef(0);
 
   useEffect(() => {
     if (!active) return;
-
-    // Reset lastTarget when cursor leaves any target — allows re-hover to retrigger
     if (!targetKey) {
       lastTargetRef.current = null;
       return;
     }
-
-    // Same target as before — don't re-trigger
     if (targetKey === lastTargetRef.current) return;
+
+    // Rate limit — mobile: 3 seconds. Desktop: 8 seconds.
+    const rateLimit = isMobile ? 3000 : 8000;
+    const now = performance.now();
+    if (now - lastSpeechTimeRef.current < rateLimit) return;
 
     clearTimeout(showTimerRef.current);
     clearTimeout(hideTimerRef.current);
 
-    // Small delay before showing — waits for cursor to actually settle on target
+    // Instant on mobile (no hover flicker to prevent). Small delay on desktop.
+    const showDelay = isMobile ? 100 : 600;
+    const speechDuration = isMobile ? 4500 : 7000;
+
     showTimerRef.current = setTimeout(() => {
       lastTargetRef.current = targetKey;
       const lines = SPEECH_LINES[targetKey];
@@ -399,41 +540,35 @@ function useSpeech(targetKey, active) {
       const chosen = lines[Math.floor(Math.random() * lines.length)];
       setLine(chosen);
       setVisible(true);
-      hideTimerRef.current = setTimeout(() => setVisible(false), 7000);
-    }, 600);
+      lastSpeechTimeRef.current = performance.now();
+      hideTimerRef.current = setTimeout(() => setVisible(false), speechDuration);
+    }, showDelay);
 
     return () => {
       clearTimeout(showTimerRef.current);
       clearTimeout(hideTimerRef.current);
     };
-  }, [targetKey, active]);
+  }, [targetKey, active, isMobile]);
 
   return { line, visible };
 }
-
-// Invitation is visible whenever in light mode — she IS the toggle
 function useInvitation(theme) {
   return theme === "light";
 }
-
 // ─── COMPONENTS ───────────────────────────────────────────────────────────────
-
-// The peeking invitation in light mode — chibi in a door, click to enter dark mode
-function Invitation({ visible, onToggle }) {
+function Invitation({ visible, onToggle, isMobile }) {
   const [hovered, setHovered] = useState(false);
-
   if (!visible) return null;
-
   return (
     <button
-      className={`familiar-door ${hovered ? 'familiar-door--hovered' : ''}`}
+      className={`familiar-door ${isMobile ? 'familiar-door--mobile' : ''} ${hovered ? 'familiar-door--hovered' : ''}`}
       onClick={onToggle}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       aria-label="Switch to dark mode — meet the familiar"
       type="button"
     >
-      {hovered && (
+      {hovered && !isMobile && (
         <div className="familiar-door-bubble">
           there's a version of this she likes better
         </div>
@@ -448,8 +583,23 @@ function Invitation({ visible, onToggle }) {
   );
 }
 
-// The full familiar in dark mode
-function FamiliarCharacter({ position, frame, facingLeft, speechLine, speechVisible }) {
+function FamiliarCharacter({ position, frame, facingLeft, speechLine, speechVisible, isMobile, onTap }) {
+  if (isMobile) {
+    return (
+      <div className="familiar-wrap familiar-wrap--mobile" onClick={onTap} role="button" aria-label="Switch to light mode">
+        {speechVisible && speechLine && (
+          <div className="familiar-speech familiar-speech--mobile">
+            {speechLine}
+          </div>
+        )}
+        <img
+          src={FRAMES[frame]}
+          alt=""
+          className={`familiar-img familiar-img--mobile ${facingLeft ? "familiar-img--flipped" : ""}`}
+        />
+      </div>
+    );
+  }
   return (
     <div
       className="familiar-wrap"
@@ -473,40 +623,49 @@ function FamiliarCharacter({ position, frame, facingLeft, speechLine, speechVisi
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
-
 export default function Familiar({ theme, toggleTheme }) {
-  const { pos: cursorPos, velocity, recentMovementsRef } = useCursor();
+  const isMobile = useIsMobile();
+
+  // Desktop tracking
+  const { pos: cursorPos, velocity: cursorVelocity, recentMovementsRef } = useCursor(!isMobile);
   const charPos = useCharacterPosition(cursorPos);
-  const hoverTarget = useHoverTarget();
-  const { line, visible: speechVisible } = useSpeech(hoverTarget, theme === "dark");
-  const { state, currentFrame: baseFrame, wakeUp } = useFamiliarState(cursorPos, velocity, charPos, speechVisible, recentMovementsRef);
+  const hoverTarget = useHoverTarget(!isMobile);
+
+  // Mobile tracking
+  const { velocity: scrollVelocity, recentScrollsRef } = useScroll(isMobile);
+  const scrollTarget = useScrollTarget(isMobile);
+
+  const target = isMobile ? scrollTarget : hoverTarget;
+  const { line, visible: speechVisible } = useSpeech(target, theme === "dark");
+
+  // State machine — different for desktop vs mobile
+  const desktopState = useFamiliarStateDesktop(
+    cursorPos, cursorVelocity, charPos, speechVisible, recentMovementsRef
+  );
+  const mobileState = useFamiliarStateMobile(
+    scrollVelocity, speechVisible, recentScrollsRef
+  );
+  const { state, currentFrame: baseFrame, wakeUp } = isMobile ? mobileState : desktopState;
+
   const showInvite = useInvitation(theme);
 
-  // Track if she was recently in idle — needed to know if getting_up should visually play.
-  // If she wasn't just sitting, the dust-off frame reads as "scratching knees" and looks wrong.
   const wasIdleRef = useRef(false);
   useEffect(() => {
-    if (state === "idle") {
-      wasIdleRef.current = true;
-    } else if (state === "walking" || state === "running" || state === "standing") {
-      // Reset once she's fully out of the sit → dust-off → walk sequence
+    if (state === "idle") wasIdleRef.current = true;
+    else if (state === "walking" || state === "running" || state === "standing") {
       wasIdleRef.current = false;
     }
   }, [state]);
 
   const currentFrame = useSpeakingFrame(baseFrame, speechVisible, state, wasIdleRef.current);
 
-  // Wake her from idle when a speech triggers - so she stands + dusts + points
   useEffect(() => {
-    if (speechVisible && state === "idle") {
-      wakeUp();
-    }
+    if (speechVisible && state === "idle") wakeUp();
   }, [speechVisible, state, wakeUp]);
 
-  // Facing direction — she's on the right margin, so she faces LEFT toward content by default
   const facingLeft = true;
 
-  // Reduce motion / accessibility
+  // Reduce motion
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -516,16 +675,7 @@ export default function Familiar({ theme, toggleTheme }) {
     return () => mq.removeEventListener("change", h);
   }, []);
 
-  // Hide on mobile
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 900);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  if (reduced || isMobile) return null;
+  if (reduced) return null;
 
   return (
     <>
@@ -537,15 +687,18 @@ export default function Familiar({ theme, toggleTheme }) {
           facingLeft={facingLeft}
           speechLine={line}
           speechVisible={speechVisible}
+          isMobile={isMobile}
+          onTap={isMobile ? toggleTheme : undefined}
         />
       )}
-      {theme === "light" && <Invitation visible={showInvite} onToggle={toggleTheme} />}
+      {theme === "light" && (
+        <Invitation visible={showInvite} onToggle={toggleTheme} isMobile={isMobile} />
+      )}
     </>
   );
 }
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
-
 const FAMILIAR_CSS = `
 .familiar-wrap {
   position: fixed;
@@ -557,12 +710,37 @@ const FAMILIAR_CSS = `
   transition: transform 0.05s linear;
 }
 
+/* Mobile — fixed bottom-right, tappable */
+.familiar-wrap--mobile {
+  position: fixed;
+  bottom: 20px;
+  right: 16px;
+  top: auto;
+  left: auto;
+  z-index: 950;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: none !important;
+  will-change: auto;
+  transition: transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.familiar-wrap--mobile:active {
+  transform: scale(0.92) !important;
+}
+
 .familiar-img {
   width: 120px;
   height: auto;
   display: block;
   filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.35));
   transition: transform 0.3s ease;
+}
+
+.familiar-img--mobile {
+  width: 75px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
 }
 
 .familiar-img--flipped {
@@ -591,6 +769,24 @@ const FAMILIAR_CSS = `
   animation: familiarSpeechIn 0.3s ease;
 }
 
+/* Mobile speech — anchored above chibi, centered, narrower */
+.familiar-speech--mobile {
+  bottom: calc(100% + 8px);
+  left: auto;
+  right: 0;
+  transform: none;
+  max-width: 220px;
+  font-size: 0.68rem;
+  padding: 8px 12px;
+  animation: familiarSpeechInMobile 0.3s ease;
+}
+
+.familiar-speech--mobile::after {
+  left: auto;
+  right: 30px;
+  transform: rotate(45deg);
+}
+
 .familiar-speech::after {
   content: '';
   position: absolute;
@@ -606,10 +802,14 @@ const FAMILIAR_CSS = `
 
 @keyframes familiarSpeechIn {
   from { opacity: 0; transform: translateX(-50%) translateY(6px); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* Chibi-in-door invitation (light mode) — clickable, IS the theme toggle */
+@keyframes familiarSpeechInMobile {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .familiar-door {
   position: fixed;
   top: 60px;
@@ -624,6 +824,29 @@ const FAMILIAR_CSS = `
   animation: familiarDoorIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   transition: transform 0.25s ease, filter 0.25s ease;
   transform-origin: right center;
+}
+
+/* Mobile door — top-right, tucked under the hamburger menu */
+.familiar-door--mobile {
+  top: 70px;   /* just below the hamburger — adjust if your nav height differs */
+  right: -18px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.familiar-door--mobile .familiar-door-img {
+  width: 80px;
+}
+
+.familiar-door--mobile:active {
+  transform: scale(0.94);
+}
+
+.familiar-door--mobile .familiar-door-img {
+  width: 90px;
+}
+
+.familiar-door--mobile:active {
+  transform: scale(0.94);
 }
 
 .familiar-door-img {
@@ -681,15 +904,11 @@ const FAMILIAR_CSS = `
 
 @keyframes familiarDoorIn {
   from { opacity: 0; transform: translateY(-20px) scale(0.9); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes familiarBubbleIn {
   from { opacity: 0; transform: translateX(6px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-@media (max-width: 900px) {
-  .familiar-wrap, .familiar-door { display: none; }
+  to { opacity: 1; transform: translateX(0); }
 }
 `;

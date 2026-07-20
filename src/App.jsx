@@ -453,7 +453,7 @@ function Nav({ activeSection, theme, toggleTheme }) {
   }, []);
 
   return (
-    <nav className={`nav${scrolled ? " nav--scrolled" : ""}`} aria-label="Main navigation">
+    <nav className={`nav${(scrolled || menuOpen) ? " nav--scrolled" : ""}`} aria-label="Main navigation">
       <a href="#hero" className="nav-logo" onClick={e => scrollTo(e, "#hero")}>
         yogita<span className="logo-dot">.builds</span>
       </a>
@@ -1470,7 +1470,7 @@ nav.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 60p
 
 @media (max-width: 860px) {
   .nav-hamburger { display: flex; }
-  .nav-links { display: none; position: absolute; top: 60px; left: 0; right: 0; flex-direction: column; gap: 0; background: var(--base-2); border-bottom: 1px solid var(--line); padding: 0.5rem 5%; }
+  .nav-links { display: none; position: absolute; top: 60px; left: 0; right: 0; z-index: 1000; isolation: isolate; flex-direction: column; gap: 0; background: var(--base-2); border-bottom: 1px solid var(--line); padding: 0.5rem 5%; }
   .nav-links.open { display: flex; }
   .nav-link { padding: 0.75rem 0; font-size: 0.9rem; border-bottom: 1px solid var(--line); }
   .nav-toggle-item { padding: 0.75rem 0; justify-content: flex-start; }
@@ -1905,4 +1905,48 @@ nav.nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 60p
 
 /* animations */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+
+@import url('https://fonts.googleapis.com/...');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+... lots of CSS ...
+... more CSS ...
+
+/* ─── HAMBURGER MENU FIX — solid background, above grid lines ─── */
+@media (max-width: 900px) {
+  .nav-links.open {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100vh;
+    background: var(--base) !important;
+    z-index: 998;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 4rem 2rem;
+    box-shadow: -4px 0 24px var(--shadow-strong);
+  }
+
+  .nav-links.open li {
+    list-style: none;
+    text-align: center;
+  }
+
+  .nav-links.open .nav-link {
+    font-size: 1.05rem;
+    letter-spacing: 0.15em;
+    text-decoration: none !important;
+    position: relative;
+    z-index: 999;
+  }
+
+   .nav-hamburger {
+    position: relative;
+    z-index: 1000;
+  }
+}
+
 `;
