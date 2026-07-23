@@ -521,16 +521,23 @@ function useSpeech(targetKey, active, isMobile) {
     }
     if (targetKey === lastTargetRef.current) return;
 
-    // Rate limit — mobile: 3 seconds. Desktop: 8 seconds.
-    const rateLimit = isMobile ? 3000 : 8000;
-    const now = performance.now();
-    if (now - lastSpeechTimeRef.current < rateLimit) return;
-
+    // Target genuinely changed — clear any lingering bubble from the previous
+    // section immediately, instead of leaving stale text on screen while the
+    // rate-limit cooldown (below) plays out.
     clearTimeout(showTimerRef.current);
     clearTimeout(hideTimerRef.current);
+    setVisible(false);
+
+    // Rate limit only guards against rapid re-triggering — it should never
+    // suppress a genuine switch to a new section's text. mobile: 3s, desktop: 8s.
+    const rateLimit = isMobile ? 3000 : 8000;
+    const now = performance.now();
+    const withinCooldown = now - lastSpeechTimeRef.current < rateLimit;
 
     // Instant on mobile (no hover flicker to prevent). Small delay on desktop.
-    const showDelay = isMobile ? 100 : 600;
+    // If we're still in the old cooldown window, skip the flicker-prevention
+    // delay entirely so the new section's text appears right away.
+    const showDelay = withinCooldown ? 0 : (isMobile ? 100 : 600);
     const speechDuration = isMobile ? 4500 : 7000;
 
     showTimerRef.current = setTimeout(() => {
